@@ -19,3 +19,4 @@ target_include_directories(openssltest PRIVATE "C:\\Program Files\\OpenSSL-Win64
 target_link_directories(openssltest PRIVATE "C:\\Program Files\\OpenSSL-Win64\\lib")
 target_link_libraries(openssltest PRIVATE ssl crypto)
 target_link_libraries(openssltest PRIVATE nlohmann_json::nlohmann_json)
+
