@@ -111,11 +111,17 @@ namespace my {
         }
 
         int pos = data[0] == '@' ? 1 : 0;
-        return data.substr(pos, data.size() - strlen(endOfData) - 1);
+        cout << "data :{"<< data << "}"<< endl;
+        cout << "length of data :" << data.size() << endl;
+        cout << "end of data:{" <<endOfData <<"}"<< endl;
+        cout << "length of end of data :" << strlen(endOfData) << endl;
+
+        return data.substr(pos, data.size() - strlen(endOfData) - pos);
     }
 
-    void send_raw_request(BIO *bio, const string &line) {
-        string request = line + "\r\n";
+    void send_raw_request(BIO *bio, const string &line, const string & eol = "\r\n") {
+        string request = line + eol;
+        cout << "SEND: [" << request << "]" << endl;
         BIO_write(bio, request.data(), request.size());
         BIO_flush(bio);
     }
@@ -256,10 +262,7 @@ public:
         my::send_raw_request(ssl_bio, "scan");
         string response = my::receive_raw_message(ssl_bio, "\n@");
         printf("received response : %s\n", response.c_str());
-
-        vector<string> tokens = parseResponse(response);
-
-        json json_response = json::parse(tokens[1]);
+        json json_response = json::parse(response.substr(strlen("data:"), response.size()));
         return json_response.get<vector<string>>();
     }
 
@@ -268,7 +271,7 @@ public:
             secondaryServer.connect(ctx);
         }
 
-        string request = "lookup:" + property;
+        string request = "llookup:" + property;
         auto ssl_bio = secondaryServer.sslBIO();
         my::send_raw_request(ssl_bio, request);
         string response = my::receive_raw_message(ssl_bio, "\n");
@@ -278,11 +281,186 @@ public:
         return tokens[1];
     }
 
+    string from(Server &secondaryServer, const string &atSign) {
+        if (!secondaryServer.isConnected()) {
+            secondaryServer.connect(ctx);
+        }
+
+        auto ssl_bio = secondaryServer.sslBIO();
+        my::send_raw_request(ssl_bio, "from:@" + atSign, "\n");
+        string response = my::receive_raw_message(ssl_bio, "\n");
+        printf("received response : %s\n", response.c_str());
+
+
+        return response.substr(strlen("data:"), response.size());
+    }
+
+    string pkam(Server &secondaryServer, const string &signature) {
+        if (!secondaryServer.isConnected()) {
+            secondaryServer.connect(ctx);
+        }
+
+        auto ssl_bio = secondaryServer.sslBIO();
+        my::send_raw_request(ssl_bio, "pkam:" + signature, "\n");
+        string response = my::receive_raw_message(ssl_bio, "\n");
+        printf("received response : %s\n", response.c_str());
+
+
+        return response;
+    }
+
 
 private:
     my::UniquePtr<SSL_CTX> ctx;
 };
 
+RSA *createPrivateRSA(const string &key) {
+    RSA *rsa = nullptr;
+    const char *c_string = key.c_str();
+    BIO *keybio = BIO_new_mem_buf((void *) c_string, -1);
+    if (keybio == nullptr) {
+        return nullptr;
+    }
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, nullptr, nullptr);
+    return rsa;
+}
+
+bool RSASign(RSA *rsa,
+             const unsigned char *Msg,
+             size_t MsgLen,
+             unsigned char **signature,
+             size_t *signatureLen) {
+    EVP_MD_CTX *m_RSASignCtx = EVP_MD_CTX_create();
+    EVP_PKEY *priKey = EVP_PKEY_new();
+    EVP_PKEY_assign_RSA(priKey, rsa);
+    if (EVP_DigestSignInit(m_RSASignCtx, nullptr, EVP_sha256(), nullptr, priKey) <= 0) {
+        return false;
+    }
+    if (EVP_DigestSignUpdate(m_RSASignCtx, Msg, MsgLen) <= 0) {
+        return false;
+    }
+    if (EVP_DigestSignFinal(m_RSASignCtx, nullptr, signatureLen) <= 0) {
+        return false;
+    }
+    *signature = (unsigned char *) malloc(*signatureLen);
+    if (EVP_DigestSignFinal(m_RSASignCtx, *signature, signatureLen) <= 0) {
+        return false;
+    }
+    EVP_MD_CTX_destroy(m_RSASignCtx);
+    return true;
+}
+
+void Base64Encode(const unsigned char *buffer,
+                  size_t length,
+                  char **base64Text) {
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+    BIO_write(bio, buffer, length);
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    BIO_set_close(bio, BIO_NOCLOSE);
+    BIO_free_all(bio);
+    *base64Text = (*bufferPtr).data;
+}
+
+string signMessage(const string &privateKey, const string &plainText) {
+    RSA *privateRSA = createPrivateRSA(privateKey);
+    unsigned char *encMessage;
+    char *base64Text;
+    size_t encMessageLength;
+    RSASign(privateRSA, (unsigned char *) plainText.c_str(), plainText.length(), &encMessage, &encMessageLength);
+    Base64Encode(encMessage, encMessageLength, &base64Text);
+    free(encMessage);
+    return base64Text;
+}
+
+std::vector<char> GenerateRsaSignByString(const std::string& message,
+                                          const std::string& prikey) {
+    OpenSSL_add_all_algorithms();
+    BIO* in = BIO_new_mem_buf((void*)prikey.c_str(), -1);
+    if (in == nullptr) {
+        std::cout << "BIO_new_mem_buf failed" << std::endl;
+        return std::vector<char>();
+    }
+
+    RSA* rsa = PEM_read_bio_RSAPrivateKey(in, nullptr, nullptr, nullptr);
+    BIO_free(in);
+
+    if (rsa == nullptr) {
+        std::cout << "PEM_read_bio_RSAPrivateKey failed" << std::endl;
+        return std::vector<char>();
+    }
+    unsigned int size = RSA_size(rsa);
+    std::vector<char> sign;
+    sign.resize(size);
+
+    int ret =
+            RSA_sign(NID_md5, (const unsigned char*)message.c_str(),
+                     message.length(), (unsigned char*)sign.data(), &size, rsa);
+    RSA_free(rsa);
+    if (ret != 1) {
+        std::cout << "RSA_sign failed" << std::endl;
+        return std::vector<char>();
+    }
+    return sign;
+}
+
+std::vector<unsigned char> GenerateRsaSignByFile(const std::string& message,
+                                        const std::string& pri_filename) {
+    OpenSSL_add_all_algorithms();
+    BIO* in = BIO_new(BIO_s_file());
+    if (in == nullptr) {
+        std::cout << "BIO_new failed" << std::endl;
+        return std::vector<unsigned char>();
+    }
+    BIO_read_filename(in, pri_filename.c_str());
+    RSA* rsa = PEM_read_bio_RSAPrivateKey(in, nullptr, nullptr, nullptr);
+    BIO_free(in);
+
+    if (rsa == nullptr) {
+        std::cout << "PEM_read_bio_RSAPrivateKey failed" << std::endl;
+        return std::vector<unsigned char>();
+    }
+    unsigned int size = RSA_size(rsa);
+    std::vector<unsigned char> sign;
+    sign.resize(size);
+
+    // Buffer to hold the calculated digest
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, message.c_str(), message.length());
+    SHA256_Final(digest, &ctx);
+
+    int ret =
+            RSA_sign(NID_sha256   , (const unsigned char*)digest,
+                     SHA256_DIGEST_LENGTH, (unsigned char*)sign.data(), &size, rsa);
+    RSA_free(rsa);
+    if (ret != 1) {
+        std::cout << "RSA_sign failed" << std::endl;
+        return std::vector<unsigned char>();
+    }
+    return sign;
+}
+
+namespace {
+    struct BIOFreeAll { void operator()(BIO* p) { BIO_free_all(p); } };
+}
+std::string Base64Encode(const std::vector<unsigned char>& binary)
+{
+    std::unique_ptr<BIO,BIOFreeAll> b64(BIO_new(BIO_f_base64()));
+    BIO_set_flags(b64.get(), BIO_FLAGS_BASE64_NO_NL);
+    BIO* sink = BIO_new(BIO_s_mem());
+    BIO_push(b64.get(), sink);
+    BIO_write(b64.get(), binary.data(), binary.size());
+    BIO_flush(b64.get());
+    const char* encoded;
+    const long len = BIO_get_mem_data(sink, &encoded);
+    return std::string(encoded, len);
+}
 
 int main() {
     AtClient atClient;
@@ -291,14 +469,29 @@ int main() {
     string rootPort = "64";
     Server rootServer(rootHost, rootPort);
 
-    string atSign = "northerncomputer";
+    string atSign = "alpaca14precise";
     Server secondaryServer = atClient.lookupSecondaryForAtSign(rootServer, atSign);
+
+    string challenge = atClient.from(secondaryServer, atSign);
+    cout << "challenge: [" << challenge << "]" << endl;
+
+    string pkamPemFile = R"(C:\Users\sting\atsign\at_client_java\at_java\at_client\keys\pkam-alpaca.pem)";
+
+    vector<unsigned char> signaturebinary = GenerateRsaSignByFile(challenge, pkamPemFile);
+
+    string b64sig = Base64Encode(signaturebinary);
+    cout << "b64 sig: " << b64sig << endl;
+
+    string pkamResponse = atClient.pkam(secondaryServer, b64sig);
+    cout << "pkamResponse: " << pkamResponse << endl;
 
     vector<string> properties = atClient.scan(secondaryServer);
     for (const auto &prop: properties) {
         cout << "prop: " << prop << endl;
+        vector<string> tokens = AtClient::parseResponse(prop);
         string scanResponse = atClient.lookup(secondaryServer, prop);
         cout << "value: " << scanResponse << endl;
     }
+
 }
 
