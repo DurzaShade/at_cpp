@@ -1,33 +1,58 @@
 #include <iostream>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 #include "Server.h"
 #include "AtClient.h"
 #include "Crypto.h"
 
-int main() {
-    std::string rootHost = "root.atsign.wtf";
-    std::string rootPort = "64";
+int main(int argc, char * argv[]) {
+    // Check for mandatory config file argument
+    if (argc < 2){
+        std::cerr << "Usage: "<< argv[0] << " <configfile>" << std::endl;
+        exit(1);
+    }
+
+    // Open config file for reading
+    std::string configFileName = argv[1];
+    std::ifstream config(configFileName);
+    if(config.fail()){
+        std::cerr << "Error: could not open file name " << configFileName << std::endl;
+        exit(1);
+    }
+
+    // Parse config file and extract relevant data
+    nlohmann::json configData = nlohmann::json::parse(config);
+    std::string rootHost = configData["rootHost"].get<std::string>();
+    std::string rootPort = configData["rootPort"].get<std::string>();
+    std::string atSign = configData["atSign"].get<std::string>();
+    std::string pkamPemFile = configData["pkamPemFile"].get<std::string>();
+
+    // Create root server object
     Server rootServer(rootHost, rootPort);
 
-    std::string atSign = "alpaca14precise";
+    // Get the secondary server for the given atSign
     Server secondaryServer = AtClient::lookupSecondaryForAtSign(rootServer, atSign);
 
+    // Send the `from` command to receive challenge
     std::string challenge = AtClient::from(secondaryServer, atSign);
 
-    std::string pkamPemFile = R"(C:\Users\sting\atsign\at_client_java\at_java\at_client\keys\pkam-alpaca.pem)";
+    // Generate pkam signature using the challenge and pkam private key
+    std::vector<unsigned char> signature = Crypto::GenerateRsaSignByFile(challenge, pkamPemFile);
+    std::string base64Signature = Crypto::Base64Encode(signature);
+    std::cout << "base64Signature sig: " << base64Signature << std::endl;
 
-    std::vector<unsigned char> signaturebinary = Crypto::GenerateRsaSignByFile(challenge, pkamPemFile);
-
-    std::string b64sig = Crypto::Base64Encode(signaturebinary);
-    std::cout << "b64 sig: " << b64sig << std::endl;
-
-    std::string pkamResponse = AtClient::pkam(secondaryServer, b64sig);
+    // Authenticate using pkam
+    std::string pkamResponse = AtClient::pkam(secondaryServer, base64Signature);
     std::cout << "pkamResponse: " << pkamResponse << std::endl;
 
+    // Send `scan` command to retrieve properties of the given atSign that are available for lookup
     std::vector<std::string> properties = AtClient::scan(secondaryServer);
     for (const auto &prop: properties) {
         std::cout << "prop: " << prop << std::endl;
         std::vector<std::string> tokens = Utils::parseResponse(prop);
+
+        // Lookup the proerty of the given atSign using `llookup`
         std::string scanResponse = AtClient::llookup(secondaryServer, prop);
         std::cout << "value: " << scanResponse << std::endl;
     }
