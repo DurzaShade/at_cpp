@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Server.h"
+#include "Command.h"
 
 Utils::UniquePtr<SSL_CTX> Server::ctx;
 
@@ -55,7 +56,7 @@ void Server::connect() {
     connected = true;
 }
 
-std::string Server::executeCommand(const std::string &command,
+std::string Server::executeCommand(const Command &command,
                                    const std::string &requestEol,
                                    const char *responseEol) {
     if (!connected) {
@@ -63,7 +64,7 @@ std::string Server::executeCommand(const std::string &command,
     }
 
     BIO *bio = ssl_bio.get();
-    send_raw_request(bio, command, requestEol);
+    send_raw_request(bio, command.getValue(), requestEol);
     return receive_raw_message(bio, responseEol);
 }
 
