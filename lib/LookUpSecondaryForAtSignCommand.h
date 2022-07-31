@@ -2,7 +2,7 @@
 #define AT_CLIENT_CPP_DEMO_LOOKUPSECONDARYFORATSIGNCOMMAND_H
 
 #include <string>
-#include "Command.h"
+#include "lib/Command.h"
 
 class LookUpSecondaryForAtSignCommand : public Command {
 

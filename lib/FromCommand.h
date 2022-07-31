@@ -2,7 +2,7 @@
 #define AT_CLIENT_CPP_DEMO_FROMCOMMAND_H
 
 #include <string>
-#include "Command.h"
+#include "lib/Command.h"
 
 class FromCommand : public Command {
 

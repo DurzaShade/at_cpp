@@ -2,9 +2,9 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-#include "Server.h"
-#include "AtClient.h"
-#include "Crypto.h"
+#include "lib/Server.h"
+#include "lib/AtClient.h"
+#include "lib/Crypto.h"
 
 // Config file keys
 static const std::string ROOT_SERVER_HOST = "rootServerHost";
