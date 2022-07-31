@@ -2,7 +2,7 @@
 #define AT_CLIENT_SERVER_H
 
 #include "Utils.h"
-#include "Command.h"
+#include "lib/Command.h"
 
 class Server {
 public:

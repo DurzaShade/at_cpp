@@ -1,7 +1,7 @@
 #ifndef AT_CLIENT_CPP_DEMO_LLOOKUPCOMMAND_H
 #define AT_CLIENT_CPP_DEMO_LLOOKUPCOMMAND_H
 
-#include "Command.h"
+#include "lib/Command.h"
 
 class LlookupCommand : public Command {
 public:

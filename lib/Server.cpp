@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "Server.h"
-#include "Command.h"
+#include "lib/Command.h"
 
 Utils::UniquePtr<SSL_CTX> Server::ctx;
 

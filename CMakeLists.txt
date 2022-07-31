@@ -19,7 +19,7 @@ target_link_directories(at_client_cpp_demo PRIVATE "C:/Program Files/OpenSSL-Win
 target_link_libraries(at_client_cpp_demo PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(at_client_cpp_demo PRIVATE at_client_cpp)
 
-add_library(at_client_cpp Server.cpp Crypto.cpp AtClient.cpp Utils.cpp)
+add_library(at_client_cpp lib/Server.cpp lib/Crypto.cpp lib/AtClient.cpp lib/Utils.cpp)
 
 target_include_directories(at_client_cpp PRIVATE .)
 target_include_directories(at_client_cpp PRIVATE "C:/Program Files/OpenSSL-Win64/include")
