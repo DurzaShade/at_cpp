@@ -2,6 +2,7 @@
 #define AT_CLIENT_SERVER_H
 
 #include "Utils.h"
+#include "Command.h"
 
 class Server {
 public:
@@ -9,7 +10,7 @@ public:
 
     void connect();
 
-    std::string executeCommand(const std::string &command,
+    std::string executeCommand(const Command &command,
                                const std::string &requestEol = "\r\n",
                                const char *responseEol = "\r\n");
 
