@@ -4,8 +4,8 @@
 #include "Server.h"
 #include "AtClient.h"
 
-Server AtClient::lookupSecondaryForAtSign(Server &rootServer, const std::string &atSign) {
-    std::string response = rootServer.executeCommand(atSign);
+Server AtClient::lookupSecondaryForAtSign(Server &rootServer, const AtSign &atSign) {
+    std::string response = rootServer.executeCommand(atSign.getValue());
     printf("received response : %s\n", response.c_str());
     std::vector<std::string> tokens = Utils::parseResponse(response);
     return {tokens[0], tokens[1]};
@@ -43,8 +43,8 @@ std::string AtClient::plookup(Server &secondaryServer, const std::string &proper
     return tokens[1];
 }
 
-std::string AtClient::from(Server &secondaryServer, const std::string &atSign) {
-    std::string fromCommand = "from:@" + atSign;
+std::string AtClient::from(Server &secondaryServer, const AtSign &atSign) {
+    std::string fromCommand = "from:@" + atSign.getValue();
     std::string response = secondaryServer.executeCommand(fromCommand, "\n", "\n");
     printf("received response : %s\n", response.c_str());
     return response.substr(strlen("data:"), response.size());

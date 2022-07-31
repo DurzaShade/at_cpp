@@ -6,6 +6,12 @@
 #include "AtClient.h"
 #include "Crypto.h"
 
+// Config file keys
+static const std::string ROOT_SERVER_HOST = "rootServerHost";
+static const std::string ROOT_SERVER_PORT = "rootServerPort";
+static const std::string AT_SIGN = "atSign";
+static const std::string PKAM_PEM_FILE = "pkamPemFile";
+
 int main(int argc, char * argv[]) {
     // Check for mandatory config file argument
     if (argc < 2){
@@ -23,10 +29,10 @@ int main(int argc, char * argv[]) {
 
     // Parse config file and extract relevant data
     nlohmann::json configData = nlohmann::json::parse(config);
-    std::string rootHost = configData["rootHost"].get<std::string>();
-    std::string rootPort = configData["rootPort"].get<std::string>();
-    std::string atSign = configData["atSign"].get<std::string>();
-    std::string pkamPemFile = configData["pkamPemFile"].get<std::string>();
+    std::string rootHost = configData[ROOT_SERVER_HOST].get<std::string>();
+    std::string rootPort = configData[ROOT_SERVER_PORT].get<std::string>();
+    AtSign atSign(configData[AT_SIGN].get<std::string>());
+    std::string pkamPemFile = configData[PKAM_PEM_FILE].get<std::string>();
 
     // Create root server object
     Server rootServer(rootHost, rootPort);
@@ -56,5 +62,7 @@ int main(int argc, char * argv[]) {
         std::string scanResponse = AtClient::llookup(secondaryServer, prop);
         std::cout << "value: " << scanResponse << std::endl;
     }
+
+    return 0;
 }
 
