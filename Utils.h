@@ -1,10 +1,11 @@
-#ifndef OPENSSLTEST_UTILS_H
-#define OPENSSLTEST_UTILS_H
+#ifndef AT_CLIENT_UTILS_H
+#define AT_CLIENT_UTILS_H
 
 #include <cstring>
 #include <stdexcept>
 #include <string>
 #include <memory>
+#include <vector>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -66,20 +67,8 @@ namespace Utils {
         std::string str() &&{ return move(str_); }
     };
 
-    [[noreturn]] void print_errors_and_exit(const char *message);
-
-    [[noreturn]] void print_errors_and_throw(const char *message);
-
-    std::string receive_some_data(BIO *bio);
-
-    std::string receive_raw_message(BIO *bio, const char *eol = "\r\n") ;
-
-    void send_raw_request(BIO *bio, const std::string &line, const std::string & eol = "\r\n");
-
-    SSL *get_ssl(BIO *bio);
-
-    void verify_the_certificate(SSL *ssl, const std::string &expected_hostname);
+    std::vector<std::string> parseResponse(const std::string &response);
 
 } // namespace Utils
 
-#endif //OPENSSLTEST_UTILS_H
+#endif //AT_CLIENT_UTILS_H

@@ -1,24 +1,42 @@
-#ifndef OPENSSLTEST_SERVER_H
-#define OPENSSLTEST_SERVER_H
+#ifndef AT_CLIENT_SERVER_H
+#define AT_CLIENT_SERVER_H
 
 #include "Utils.h"
 
 class Server {
 public:
-    Server(std::string host, std::string port)
-            : host(move(host)), port(move(port)), connected(false) {}
+    Server(const std::string &host, const std::string &port);
 
-    void connect(Utils::UniquePtr<SSL_CTX> &ctx);
+    void connect();
 
-    bool isConnected() const;
-
-    BIO *sslBIO();
+    std::string executeCommand(const std::string &command,
+                               const std::string &requestEol = "\r\n",
+                               const char *responseEol = "\r\n");
 
 private:
+    [[noreturn]] static void print_errors_and_exit(const char *message);
+
+    [[noreturn]] static void print_errors_and_throw(const char *message);
+
+    std::string receive_some_data(BIO *bio);
+
+    std::string receive_raw_message(BIO *bio, const char *eol = "\r\n");
+
+    static void send_raw_request(BIO *bio, const std::string &line, const std::string &eol = "\r\n");
+
+    static SSL *get_ssl(BIO *bio);
+
+    static void verify_the_certificate(SSL *ssl, const std::string &expected_hostname);
+
     std::string host;
+
     std::string port;
+
     bool connected;
+
     Utils::UniquePtr<BIO> ssl_bio;
+
+    static Utils::UniquePtr<SSL_CTX> ctx;
 };
 
-#endif //OPENSSLTEST_SERVER_H
+#endif //AT_CLIENT_SERVER_H
