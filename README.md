@@ -21,10 +21,10 @@ cmake.exe --build ./cmake-build-debug --target at_client_cpp_demo
 The exe requires a `config.json` file as an argument. Sample contents are shown below.
 ```json
 {
-  "rootHost"    : "root.atsign.wtf",
-  "rootPort"    : "64",
-  "atSign"      : "<your atsign>",
-  "pkamPemFile" : "<path of your pem file>"
+  "rootServerHost"    : "root.atsign.wtf",
+  "rootServerPort"    : "64",
+  "atSign"            : "<your atsign>",
+  "pkamPemFile"       : "<path of your pem file>"
 }
 ```
 
